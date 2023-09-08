@@ -1,37 +1,68 @@
-run_analysis <- function(){
-  # load test data  
-  subject_test = read.table("UCI HAR Dataset/test/subject_test.txt")
-  X_test = read.table("UCI HAR Dataset/test/X_test.txt")
-  Y_test = read.table("UCI HAR Dataset/test/Y_test.txt")
+# Read the Activity 
+  DataActivityTrain <- read.table(file.path(path_file, "train", "Y_train.txt"), header = FALSE)
+  DataActivityTest  <- read.table(file.path(path_file, "test" , "Y_test.txt" ), header = FALSE)
+                                                                                
+##  Read the Subject 
+  DataSubjectTrain <- read.table(file.path(path_file, "train", "subject_train.txt"), header = FALSE)
+  DataSubjectTest  <- read.table(file.path(path_file, "test" , "subject_test.txt"), header = FALSE)
+                                                                                
+#  Read Features 
+  DataFeaturesTrain <- read.table(file.path(path_file, "train", "X_train.txt"), header = FALSE)
+  DataFeaturesTest  <- read.table(file.path(path_file, "test" , "X_test.txt"), header = FALSE)
+ 
+  ## look at the structure of the variables
+  str(DataActivityTrain)
+  str(DataActivityTest)
+  str(DataSubjectTrain)
+  str(DataSubjectTest)  
+  str(DataFeaturesTrain)
+  str(DataFeaturesTest)
+ 
+#  Concatenate the data tables by rows
+  ActivityData <- rbind(DataActivityTrain, DataActivityTest)        
+  SubjectData <- rbind(DataSubjectTrain, DataSubjectTest)
+  FeaturesData <- rbind(DataFeaturesTrain, DataFeaturesTest)
+ 
+# Set names to variables
+  names(ActivityData) <- c("activity")
+  names(SubjectData) <- c("subject")
+  FeaturesDataNames <- read.table(file.path(path_file, "features.txt"), head=FALSE)
+  names(FeaturesData) <- FeaturesDataNames$V2                                    
+  FeaturesDataNames
   
-  # load training data
-  subject_train = read.table("UCI HAR Dataset/train/subject_train.txt")
-  X_train = read.table("UCI HAR Dataset/train/X_train.txt")
-  Y_train = read.table("UCI HAR Dataset/train/Y_train.txt")
+# Merge columns 
+  CombineData <- cbind(ActivityData, SubjectData)
+  CombineAllData <- cbind(FeaturesData, CombineData)  
+  CombineAllData
   
-  # load lookup information
-  features <- read.table("UCI HAR Dataset/features.txt", col.names=c("featureId", "featureLabel"))
-  activities <- read.table("UCI HAR Dataset/activity_labels.txt", col.names=c("activityId", "activityLabel"))
-  activities$activityLabel <- gsub("_", "", as.character(activities$activityLabel))
-  includedFeatures <- grep("-mean\\(\\)|-std\\(\\)", features$featureLabel)
+#  Subset Name of Features by measurements on the mean and standard deviation
+#        i.e taken Names of Features with “mean()” or “std()” 
+  SubsetFeaturesDataNames <- FeaturesDataNames$V2[grep("mean\\(\\)|std\\(\\)", FeaturesDataNames$V2)]
+  SubsetFeaturesDataNames
+
+#  Subset the dataframe Data by selected names of Features 
+  SelectedNames <- c(as.character(SubsetFeaturesDataNames), "subject", "activity")
+  CombineAllData <- subset(CombineAllData, select = SelectedNames) 
+  View(CombineAllData)                                                                    
+
+#  Check the structures of the dataframe Data 
+  str(CombineAllData)                                                                    
+
+#  Read descriptive activity names from “activity_labels.txt”
   
-  # merge test and training data and then name them
-  subject <- rbind(subject_test, subject_train)
-  names(subject) <- "subjectId"
-  X <- rbind(X_test, X_train)
-  X <- X[, includedFeatures]
-  names(X) <- gsub("\\(|\\)", "", features$featureLabel[includedFeatures])
-  Y <- rbind(Y_test, Y_train)
-  names(Y) = "activityId"
-  activity <- merge(Y, activities, by="activityId")$activityLabel
+  activityLabels <- read.table(file.path(path_file, "activity_labels.txt"), header = FALSE) 
+  activityLabels
+  head(CombineAllData$activity,30)
+
+  # Check
+  names(CombineAllData)
   
-  # merge data frames of different columns to form one data table
-  data <- cbind(subject, X, activity)
-  write.table(data, "merged_tidy_data.txt")
+# Creates a second,independent tidy data set and output it.
+  library(plyr);                                                                
+  TidyData2 <- aggregate(. ~subject + activity, CombineAllData, mean)
+  TidyData2 <- TidyData2[order(TidyData2$subject, TidyData2$activity),]
+  str(TidyData2)
   
-  # create a dataset grouped by subject and activity after applying standard deviation and average calculations
-  library(data.table)
-  dataDT <- data.table(data)
-  calculatedData<- dataDT[, lapply(.SD, mean), by=c("subjectId", "activity")]
-  write.table(calculatedData, "calculated_tidy_data.txt")
-}
+# Writing second tidy data set in txt file
+  write.table(TidyData2, file = "tidydata.txt", row.name = FALSE)
+  
