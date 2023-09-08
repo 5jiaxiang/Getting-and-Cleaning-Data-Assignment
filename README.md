@@ -19,6 +19,3 @@ Dependencies
 
 1. The R script assumes you have 'data.table' installed using install.packages("data.table")
 
-More Information
-
-For more information on the data set, please refer to http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones
